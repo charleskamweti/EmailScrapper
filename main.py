@@ -1,9 +1,15 @@
-from googleapiclient.discovery import build
 import sys
+import csv
+import os
+from googleapiclient.discovery import build
+from dotenv import load_dotenv
+
+# Configure UTF-8 output
 sys.stdout.reconfigure(encoding='utf-8')
 
-# YouTube API Key
-API_KEY = "AIvaSyBFCpsFM7Lv2wAy4V0GjYVMfHYBQ2OBjSc"
+# Load environment variables from .env file
+load_dotenv()
+API_KEY = os.getenv("YOUTUBE_API_KEY")
 
 def search_channels_by_keyword(keyword, total_results=100):
     """Fetch YouTube channels based on a keyword (category) with pagination."""
@@ -17,7 +23,7 @@ def search_channels_by_keyword(keyword, total_results=100):
             q=keyword,  
             type="channel",
             part="snippet",
-            maxResults=min(50, total_results - len(channels)),  # API allows max 50 per request
+            maxResults=min(50, total_results - len(channels)),
             pageToken=next_page_token
         )
         response = request.execute()
@@ -36,20 +42,27 @@ def search_channels_by_keyword(keyword, total_results=100):
             })
 
             if len(channels) >= total_results:
-                break  # Stop on reaching the requested count
+                break
 
         next_page_token = response.get("nextPageToken")
         if not next_page_token:
-            break  # No more results available
+            break
 
     return channels
 
+def export_to_csv(channels, filename="youtube_channels.csv"):
+    """Export channel list to a CSV file."""
+    with open(filename, mode='w', newline='', encoding='utf-8') as csvfile:
+        fieldnames = ["Channel Name", "Channel ID", "Description", "Channel URL"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for channel in channels:
+            writer.writerow(channel)
 
-# Fetch 20 channels in the "Technology" category
-category = "Technology"  # Change to your desired category
+# --- Run the tool ---
+category = "Technology"
 channels = search_channels_by_keyword(category, total_results=20)
 
-# Print results
 print("\n🔹 YouTube Channels Found:\n")
 for idx, channel in enumerate(channels, start=1):
     print(f"{idx}. Channel Name: {channel['Channel Name']}")
@@ -57,3 +70,7 @@ for idx, channel in enumerate(channels, start=1):
     print(f"   Description: {channel['Description']}")
     print(f"   URL: {channel['Channel URL']}")
     print("-" * 60)
+
+# Export to CSV
+export_to_csv(channels)
+print("\n Channels exported to 'youtube_channels.csv'")
